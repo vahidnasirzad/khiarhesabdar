@@ -1,10 +1,11 @@
-// app/add-invoice/page.js
+// app/add-invoice/page.tsx
 
 'use client'; 
 import React from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation'; 
-import DatePicker from 'react-multi-date-picker';
+// FIX: Import DateObject from the main library path for better compatibility
+import DatePicker, { DateObject } from 'react-multi-date-picker'; 
 import persian from 'react-date-object/calendars/persian';
 import persian_fa from 'react-date-object/locales/persian_fa';
 import gregorian from 'react-date-object/calendars/gregorian';
@@ -27,12 +28,14 @@ export default function AddInvoice() {
   const [shamsiPreview, setShamsiPreview] = useState(moment(form.date).format('jYYYY/jMM/jDD'));
   const [error, setError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // FIX: Use a union type to correctly handle both <input> and <select> elements
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type, checked } = e.target;
     setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
   };
 
-  const handleDateChange = (dateObj) => {
+  // FIX: Type dateObj using the imported DateObject type and include null
+  const handleDateChange = (dateObj: DateObject | null) => {
     if (!dateObj) return;
 
     // Convert Shamsi → Gregorian
@@ -46,7 +49,8 @@ export default function AddInvoice() {
     console.log('🗓️ Shamsi preview:', shamsi);
   };
 
-  const handleSubmit = async (e) => {
+  // FIX: Explicitly type 'e' as a React Form Event
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const payload = { ...form, date: moment(form.date).format('YYYY-MM-DD') };
@@ -165,13 +169,11 @@ const styles = {
   container: { 
     maxWidth: '600px', 
     margin: '50px auto', 
-    padding: '30px', // Increased padding
+    padding: '30px', 
     borderRadius: '10px',
-    // --- START: Background fix for form ---
-    backgroundColor: 'rgba(255, 255, 255, 0.95)', // Nearly opaque white background
-    boxShadow: '0 4px 20px rgba(0,0,0,0.3)', // Clearer shadow
-    color: '#333', // Ensure text is dark for contrast
-    // --- END: Background fix for form ---
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+    boxShadow: '0 4px 20px rgba(0,0,0,0.3)', 
+    color: '#333', 
   },
   heading: { textAlign: 'center', marginBottom: '20px', color: '#333' },
   form: { display: 'flex', flexDirection: 'column', gap: '15px' },
@@ -184,17 +186,15 @@ const styles = {
   borderRadius: '5px', border: 'none', backgroundColor: 'green', color: 'white', fontSize: '16px', cursor: 'pointer' },
   error: { color: 'red', marginTop: '10px' },
 
-  // --- NEW STYLE ADDED ---
   backButton: { 
     padding: '12px', 
     borderRadius: '5px', 
     border: 'none', 
-    backgroundColor: '#4a90e2', // Blue color
+    backgroundColor: '#4a90e2', 
     color: 'white', 
     fontSize: '16px', 
     cursor: 'pointer',
     fontFamily: 'Lalezar, Tahoma, sans-serif',
     marginTop: '10px',
   },
-  // --- END NEW STYLE ---
 };
