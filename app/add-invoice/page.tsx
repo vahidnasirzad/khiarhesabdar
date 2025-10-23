@@ -29,10 +29,18 @@ export default function AddInvoice() {
   const [error, setError] = useState('');
 
   // FIX: Use a union type to correctly handle both <input> and <select> elements
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type, checked } = e.target;
-    setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
-  };
+  // app/add-invoice/page.tsx (around line 32)
+
+// FIX: Use a union type to correctly handle both <input> and <select> elements
+const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  // FIX: Assert 'e.target' as HTMLInputElement for TypeScript to recognize 'checked'
+  // Since 'value', 'name', and 'type' exist on both, this is safe because we check the 'type' later.
+  const target = e.target as HTMLInputElement;
+
+  const { name, value, type, checked } = target;
+
+  setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
+};
 
   // FIX: Type dateObj using the imported DateObject type and include null
   const handleDateChange = (dateObj: DateObject | null) => {
