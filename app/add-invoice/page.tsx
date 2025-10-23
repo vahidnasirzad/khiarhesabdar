@@ -1,7 +1,7 @@
 // app/add-invoice/page.js
 
 'use client'; 
-
+import React from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation'; 
 import DatePicker from 'react-multi-date-picker';
@@ -27,7 +27,7 @@ export default function AddInvoice() {
   const [shamsiPreview, setShamsiPreview] = useState(moment(form.date).format('jYYYY/jMM/jDD'));
   const [error, setError] = useState('');
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
   };
