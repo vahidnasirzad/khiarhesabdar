@@ -1,15 +1,18 @@
 // app/add-invoice/page.tsx
 
 'use client'; 
-import React from 'react';
-import { useState } from 'react';
+// FIX: Import CSSProperties for style object typing
+import React, { useState, CSSProperties, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation'; 
-// FIX: Import DateObject from the main library path for better compatibility
+// FIX: Import DateObject from the main library path for type safety
 import DatePicker, { DateObject } from 'react-multi-date-picker'; 
 import persian from 'react-date-object/calendars/persian';
 import persian_fa from 'react-date-object/locales/persian_fa';
 import gregorian from 'react-date-object/calendars/gregorian';
 import moment from 'moment-jalaali';
+
+// FIX: Define a type for the styles object using a Record type
+type StyleMap = Record<string, CSSProperties>;
 
 export default function AddInvoice() {
   const router = useRouter();
@@ -28,19 +31,16 @@ export default function AddInvoice() {
   const [shamsiPreview, setShamsiPreview] = useState(moment(form.date).format('jYYYY/jMM/jDD'));
   const [error, setError] = useState('');
 
-  // FIX: Use a union type to correctly handle both <input> and <select> elements
-  // app/add-invoice/page.tsx (around line 32)
+  // FIX: Use ChangeEvent with a union type and safe type assertion for 'checked'
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    // Assert 'e.target' as HTMLInputElement for TypeScript to recognize 'checked'
+    // This is safe because 'checked' is only used when 'type' is 'checkbox'.
+    const target = e.target as HTMLInputElement;
 
-// FIX: Use a union type to correctly handle both <input> and <select> elements
-const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-  // FIX: Assert 'e.target' as HTMLInputElement for TypeScript to recognize 'checked'
-  // Since 'value', 'name', and 'type' exist on both, this is safe because we check the 'type' later.
-  const target = e.target as HTMLInputElement;
+    const { name, value, type, checked } = target;
 
-  const { name, value, type, checked } = target;
-
-  setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
-};
+    setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
+  };
 
   // FIX: Type dateObj using the imported DateObject type and include null
   const handleDateChange = (dateObj: DateObject | null) => {
@@ -58,7 +58,7 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   };
 
   // FIX: Explicitly type 'e' as a React Form Event
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const payload = { ...form, date: moment(form.date).format('YYYY-MM-DD') };
@@ -99,15 +99,8 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
             calendar={persian}
             locale={persian_fa}
             format="YYYY/MM/DD"
-            style={{
-              width: '100%',
-              padding: '10px',
-              fontSize: '16px',
-              border: '1px solid #ccc',
-              borderRadius: '5px'
-            }}
+            style={styles.datePickerInput}
           />
-          {/* <p style={{ marginTop: '5px', color: '#555' }}>پیش‌نمایش شمسی: {shamsiPreview}</p> */}
         </div>
 
         <div style={styles.formGroup}>
@@ -173,7 +166,8 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
 }
 
 
-const styles = {
+// FIX: Apply the StyleMap type to the styles object definition
+const styles: StyleMap = {
   container: { 
     maxWidth: '600px', 
     margin: '50px auto', 
@@ -190,8 +184,9 @@ const styles = {
   label: { marginBottom: '5px', fontWeight: 'bold', color: '#555' },
   input: { padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' },
   button: { padding: '12px',
-  fontFamily: 'Lalezar, Tahoma, sans-serif',
-  borderRadius: '5px', border: 'none', backgroundColor: 'green', color: 'white', fontSize: '16px', cursor: 'pointer' },
+    fontFamily: 'Lalezar, Tahoma, sans-serif',
+    borderRadius: '5px', border: 'none', backgroundColor: 'green', color: 'white', fontSize: '16px', cursor: 'pointer' 
+  },
   error: { color: 'red', marginTop: '10px' },
 
   backButton: { 
@@ -205,4 +200,13 @@ const styles = {
     fontFamily: 'Lalezar, Tahoma, sans-serif',
     marginTop: '10px',
   },
+  
+  // FIX: Moved inline style from DatePicker to the styles object
+  datePickerInput: {
+    width: '100%',
+    padding: '10px',
+    fontSize: '16px',
+    border: '1px solid #ccc',
+    borderRadius: '5px'
+  }
 };
