@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation'; // Corrected import for App Router
+// FIX: Import the FormEvent type from React
+import { useState, FormEvent } from 'react'; 
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -9,7 +10,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e) => {
+  // FIX: Explicitly type 'e' as FormEvent<HTMLFormElement>
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     try {
