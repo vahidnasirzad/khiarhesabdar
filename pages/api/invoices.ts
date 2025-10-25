@@ -1,61 +1,105 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { sql } from '@vercel/postgres';
+import { NextResponse } from 'next/server';
+import moment from 'moment-jalaali'; // Dependency for date formatting (optional but useful)
 
-const prisma = new PrismaClient(); 
+/**
+ * Handles GET requests to /api/invoices.
+ * Fetches all invoices from the database and returns them.
+ * * The client component expects the response to be in the format: { invoices: [...] }
+ */
+export async function GET() {
+  try {
+    // Select all necessary columns from the invoices table
+    const result = await sql`
+      SELECT 
+        id, 
+        date, 
+        title, 
+        description, 
+        amount, 
+        store_name, 
+        type, 
+        category, 
+        has_receipt, 
+        has_invoice
+      FROM invoices;
+    `;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  
-  if (req.method === 'POST') {
-    try {
-      const { date, title, description, amount, store_name, type, category, has_receipt, has_invoice } = req.body;
-      
-      // 💥 CRITICAL FIX: Convert string inputs to correct data types for the database
-      const parsedAmount = parseFloat(amount); // Convert amount string to a number
-      const parsedHasReceipt = Boolean(has_receipt); // Ensure boolean type
-      const parsedHasInvoice = Boolean(has_invoice); // Ensure boolean type
-      
-      if (isNaN(parsedAmount) || !title || !date) {
-        return res.status(400).json({ message: 'Invalid or missing required fields.' });
-      }
-      
-      // Construct the data object with correctly typed values
-      const dataToCreate = {
-        date: new Date(date), // Ensure date is a Date object if required by Prisma
-        title,
-        description,
-        amount: parsedAmount,
-        store_name,
-        type,
-        category,
-        has_receipt: parsedHasReceipt,
-        has_invoice: parsedHasInvoice,
-      };
+    // Process dates to Jalaali format before sending to client (Optional but helpful for consistency)
+    const invoices = result.rows.map(invoice => ({
+      ...invoice,
+      // Convert standard date string (or Date object) to Jalaali YYYY/MM/DD
+      date: invoice.date ? moment(invoice.date).format('jYYYY/jMM/jDD') : null,
+      // Ensure amount is a number for client-side processing, though often stored as text/numeric
+      amount: Number(invoice.amount) 
+    }));
 
-      const newInvoice = await prisma.invoice.create({ data: dataToCreate }); 
+    // CRITICAL: Return the data inside an object with the key 'invoices', as expected by the client component.
+    return NextResponse.json({ invoices }, { status: 200 });
 
-      return res.status(201).json(newInvoice);
-
-    } catch (error) {
-      console.error('Error processing POST request:', error);
-      
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        return res.status(500).json({ message: `Database Error: ${error.code} - Check data types.` });
-      }
-
-      return res.status(500).json({ message: 'Failed to create invoice due to an unexpected server error.' });
-    }
+  } catch (error) {
+    console.error('Database Error (GET /api/invoices):', error);
+    return NextResponse.json({ message: 'Failed to fetch invoices.' }, { status: 500 });
   }
+}
 
-  // Handle GET and other methods... (leaving them unchanged from the last successful push)
-  if (req.method === 'GET') {
-    try {
-      const invoices = await prisma.invoice.findMany({}); 
-      return res.status(200).json({ invoices });
-    } catch (error) {
-      return res.status(500).json({ message: 'Failed to retrieve invoices.' });
+/**
+ * Handles POST requests to /api/invoices.
+ * Receives new invoice data and inserts it into the database.
+ */
+export async function POST(request) {
+  try {
+    const data = await request.json();
+    
+    // Validate and Destructure data from the request body
+    const { 
+      date, 
+      title, 
+      description = '', // Default to empty string if missing
+      amount, 
+      store_name = '', // Default to empty string if missing
+      type, 
+      category = 'General', // Default category
+      has_receipt = false, 
+      has_invoice = false,
+    } = data;
+
+    // Basic validation
+    if (!title || !amount || !type) {
+        return NextResponse.json({ message: 'Missing required fields: title, amount, and type are mandatory.' }, { status: 400 });
     }
-  }
 
-  res.setHeader('Allow', ['GET', 'POST']);
-  return res.status(405).end(`Method ${req.method} Not Allowed`);
+    // Execute the INSERT query using parameterized values for security
+    await sql`
+      INSERT INTO invoices (
+        date, 
+        title, 
+        description, 
+        amount, 
+        store_name, 
+        type, 
+        category, 
+        has_receipt, 
+        has_invoice
+      )
+      VALUES (
+        ${date || null}, 
+        ${title}, 
+        ${amount}, 
+        ${store_name}, 
+        ${type}, 
+        ${category}, 
+        ${has_receipt}, 
+        ${has_invoice}
+      );
+    `;
+
+    // Return a 201 status code for successful creation
+    return NextResponse.json({ message: 'Invoice added successfully.' }, { status: 201 });
+
+  } catch (error) {
+    console.error('Database Error (POST /api/invoices):', error);
+    // You can inspect the error details if needed, but return a generic 500
+    return NextResponse.json({ message: 'Failed to save invoice to the database.' }, { status: 500 });
+  }
 }
