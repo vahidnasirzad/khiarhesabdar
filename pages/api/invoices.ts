@@ -1,19 +1,17 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next'; // <-- 🚨 ESSENTIAL IMPORT
 import { PrismaClient, Prisma } from '@prisma/client';
 
-// Initialize the Prisma Client outside the handler for best practice
-// const prisma = new PrismaClient(); // <--- UNCOMMENT AND USE YOUR ACTUAL PRISMA CLIENT
+// Initialize the Prisma Client (UNCOMMENT IF YOU ARE USING PRISMA)
+// const prisma = new PrismaClient(); 
 
-// Explicitly define the types for the request and response objects
+// FIX: We MUST use the imported types for the API handler function
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   
   // --- GET: Fetch all invoices ---
   if (req.method === 'GET') {
     try {
-      // const invoices = await prisma.invoice.findMany({}); // <--- Use your Prisma query here
-      
-      // Temporary placeholder response until Prisma is connected
-      const invoices = []; 
+      // const invoices = await prisma.invoice.findMany({}); 
+      const invoices: any[] = []; // Placeholder 
       
       return res.status(200).json({ invoices });
     } catch (error) {
@@ -27,22 +25,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const data = req.body;
       
-      // Basic validation check
       if (!data.title || !data.amount || !data.date) {
-        return res.status(400).json({ message: 'Missing required fields: title, amount, or date.' });
+        return res.status(400).json({ message: 'Missing required fields.' });
       }
       
-      // const newInvoice = await prisma.invoice.create({ data }); // <--- Use your Prisma insertion here
+      // const newInvoice = await prisma.invoice.create({ data }); 
 
-      // Temporary placeholder response
       return res.status(201).json({ message: 'Invoice created successfully (Placeholder)' });
 
     } catch (error) {
       console.error('Error processing POST request:', error);
       
-      // Handle database-specific errors if necessary
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        return res.status(500).json({ message: `Database Error: ${error.code} - Check your schema and data types.` });
+        return res.status(500).json({ message: `Database Error: ${error.code} - Check your schema.` });
       }
 
       return res.status(500).json({ message: 'Failed to create invoice due to an unexpected server error.' });
