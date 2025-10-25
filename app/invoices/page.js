@@ -7,7 +7,7 @@ async function getInvoices() {
   // This runs on the server to securely fetch data from the database.
   try {
     // NOTE: This assumes 'pool' is correctly configured and accessible here.
-    const [rows] = await pool.query('SELECT * FROM invoices ORDER BY date ASC, id ASC');
+    const [rows] = await pool.query('SELECT * FROM invoice ORDER BY date ASC, id ASC');
     const invoices = rows.map(row => ({
       ...row,
       date: row.date ? row.date.toISOString().split('T')[0] : null
