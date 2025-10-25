@@ -1,8 +1,8 @@
-import { NextApiRequest, NextApiResponse } from 'next'; // <-- 🚨 ESSENTIAL IMPORT
+import { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient, Prisma } from '@prisma/client';
 
-// Initialize the Prisma Client (UNCOMMENT IF YOU ARE USING PRISMA)
-// const prisma = new PrismaClient(); 
+// Initialize the Prisma Client outside the handler for best performance
+const prisma = new PrismaClient(); // <--- 💥 UNCOMMENTED! This must be present.
 
 // FIX: We MUST use the imported types for the API handler function
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -10,8 +10,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // --- GET: Fetch all invoices ---
   if (req.method === 'GET') {
     try {
-      // const invoices = await prisma.invoice.findMany({}); 
-      const invoices: any[] = []; // Placeholder 
+      // Fetching all invoices is needed for the list view
+      const invoices = await prisma.invoice.findMany({}); 
       
       return res.status(200).json({ invoices });
     } catch (error) {
@@ -29,15 +29,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ message: 'Missing required fields.' });
       }
       
-      // const newInvoice = await prisma.invoice.create({ data }); 
+      // 💥 ACTION: Actual database write operation is now uncommented
+      const newInvoice = await prisma.invoice.create({ data }); 
 
-      return res.status(201).json({ message: 'Invoice created successfully (Placeholder)' });
+      // Return the newly created object
+      return res.status(201).json(newInvoice);
 
     } catch (error) {
       console.error('Error processing POST request:', error);
       
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        return res.status(500).json({ message: `Database Error: ${error.code} - Check your schema.` });
+        // This catches issues like data type mismatch or constraint violations
+        return res.status(500).json({ message: `Database Error: ${error.code} - Check your schema and data types.` });
       }
 
       return res.status(500).json({ message: 'Failed to create invoice due to an unexpected server error.' });
