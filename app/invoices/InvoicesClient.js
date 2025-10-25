@@ -48,6 +48,7 @@ export default function InvoicesClient({ initialInvoices }) {
   
   // --- 3. DATA FETCHING FUNCTION (CRITICAL for Refresh) ---
   const fetchInvoices = useCallback(async () => {
+    console.log("DEBUG: fetchInvoices started..."); // 💡 Debug Log 1
     setLoading(true);
     setError(null);
     try {
@@ -61,12 +62,15 @@ export default function InvoicesClient({ initialInvoices }) {
       // IMPORTANT: Update the component's state with the fresh data
       if (data && data.invoices) {
         setInvoicesList(data.invoices);
+        // 💡 Debug Log 2: Check the list size returned from the server
+        console.log(`DEBUG: Successfully fetched ${data.invoices.length} invoices from the API.`); 
       }
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Failed to load invoices from server.");
     } finally {
       setLoading(false);
+      console.log("DEBUG: fetchInvoices finished."); // 💡 Debug Log 3
     }
   }, []);
 
@@ -100,6 +104,7 @@ export default function InvoicesClient({ initialInvoices }) {
       });
 
       if (response.ok) {
+        console.log("DEBUG: POST successful. Triggering list refresh."); // 💡 Debug Log 4
         // 💥 FIX: CALL REFRESH HERE TO GET THE NEW DATA
         await fetchInvoices(); 
         
