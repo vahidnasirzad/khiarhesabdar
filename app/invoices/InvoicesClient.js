@@ -1,9 +1,10 @@
 'use client'; 
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp } from 'firebase/firestore';
+// 💥 FIX: Switching Firebase imports to use direct CDN paths to resolve 'Module not found' errors.
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- Global Firebase Configuration (Mandatory) ---
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
