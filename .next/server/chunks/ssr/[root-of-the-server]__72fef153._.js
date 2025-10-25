@@ -150,7 +150,7 @@ async function getInvoices() {
     // This runs on the server to securely fetch data from the database.
     try {
         // NOTE: This assumes 'pool' is correctly configured and accessible here.
-        const [rows] = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"].query('SELECT * FROM invoices ORDER BY date ASC, id ASC');
+        const [rows] = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"].query('SELECT * FROM invoice ORDER BY date ASC, id ASC');
         const invoices = rows.map((row)=>({
                 ...row,
                 date: row.date ? row.date.toISOString().split('T')[0] : null
