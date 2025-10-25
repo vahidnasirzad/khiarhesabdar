@@ -1,0 +1,25 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Make sure your Neon connection string is in your .env file
+  url      = env("DATABASE_URL")
+}
+
+model Invoice {
+  id            Int       @id @default(autoincrement())
+  store_name    String?
+  date          DateTime 
+  title         String
+  amount        Float
+  type          String
+  category      String
+  description   String?
+  has_receipt   Boolean
+  has_invoice   Boolean
+  createdAt     DateTime  @default(now())
+}
