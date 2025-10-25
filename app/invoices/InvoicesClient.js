@@ -1,540 +1,449 @@
+// app/invoices/InvoicesClient.js
 'use client'; 
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-// 💥 FIX: Switching Firebase imports to use direct CDN paths to resolve 'Module not found' errors.
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import React, { useState, useMemo, useCallback } from 'react';
+import { revalidateInvoices } from '../../lib/actions'; 
+import { useRouter } from 'next/navigation';
 
-// --- Global Firebase Configuration (Mandatory) ---
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+// --- Icon Definitions ---
+const ICON_CHECK = '✅';
+const ICON_X = '❌';
 
-// --- ICON DEFINITIONS: Using inline SVGs to avoid 'Module not found' dependency errors ---
-const Plus = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5v14"/></svg>;
-const List = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3" y1="6" y2="6"/><line x1="3" x2="3" y1="12" y2="12"/><line x1="3" x2="3" y1="18" y2="18"/></svg>;
-const Save = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>;
-const X = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>;
-const Search = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>;
-const Check = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
-const XIcon = X; 
-// --- END ICON DEFINITIONS ---
+// --- Styles Definition (Matching your provided HTML inline styles) ---
+const styles = {
+    // Main Container
+    container: {
+        maxWidth: '1200px',
+        margin: '50px auto',
+        padding: '30px',
+        borderRadius: '10px',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+        color: '#333',
+        fontFamily: 'Tahoma, sans-serif',
+        textAlign: 'right'
+    },
+    // Header
+    headerContainer: {
+        display: 'flex',
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+        marginBottom: '30px',
+        borderBottom: '2px solid #eee',
+        paddingBottom: '10px'
+    },
+    heading: {
+        margin: 0,
+        color: '#1a4f1a',
+        marginLeft: 'auto',
+        paddingRight: '15px'
+    },
+    // Add Button (The '+' button)
+    addButton: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '40px',
+        height: '40px',
+        borderRadius: '50%',
+        border: 'none',
+        backgroundColor: '#4CAF50',
+        color: 'white',
+        fontSize: '24px',
+        lineHeight: 1,
+        cursor: 'pointer',
+        textDecoration: 'none',
+        transition: 'background-color 0.2s',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+        fontFamily: 'Tahoma, sans-serif',
+        fontWeight: 'bold',
+        flexShrink: 0
+    },
+    // Filter Row
+    filterRow: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        marginBottom: '15px',
+        gap: '15px'
+    },
+    filterInput: {
+        padding: '10px 15px',
+        borderRadius: '5px',
+        border: '1px solid #ccc',
+        flexGrow: 1,
+        minWidth: '200px',
+        boxSizing: 'border-box',
+        textAlign: 'right',
+        fontFamily: 'Tahoma, sans-serif'
+    },
+    filterSelect: {
+        padding: '10px 15px',
+        borderRadius: '5px',
+        border: '1px solid #ccc',
+        minWidth: '150px',
+        fontFamily: 'Tahoma, sans-serif',
+        textAlignLast: 'right',
+        direction: 'rtl'
+    },
+    // Status Buttons Row
+    statusRow: {
+        display: 'flex',
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        marginBottom: '15px',
+        gap: '15px'
+    },
+    buttonGroup: {
+        display: 'flex',
+        gap: '2px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        border: '1px solid #ccc',
+        backgroundColor: '#f5f5f5'
+    },
+    // Base button style for status toggles
+    statusButtonBase: {
+        padding: '8px 12px',
+        border: 'none',
+        backgroundColor: 'transparent',
+        color: '#555',
+        cursor: 'pointer',
+        fontFamily: 'Tahoma, sans-serif',
+        transition: 'background-color 0.2s, color 0.2s',
+        fontSize: '0.9em',
+        minWidth: '70px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '5px',
+        borderLeft: 'none'
+    },
+    // Active button style for status toggles
+    statusButtonActive: {
+        backgroundColor: '#007bff',
+        color: 'white',
+    },
+    // Table
+    tableContainer: {
+        overflowX: 'auto',
+        width: '100%',
+        marginTop: '20px'
+    },
+    table: {
+        width: 'auto',
+        minWidth: '100%',
+        borderCollapse: 'collapse',
+        fontSize: '0.85em',
+        direction: 'rtl'
+    },
+    tableHead: {
+        backgroundColor: '#4CAF50',
+        color: 'white'
+    },
+    tableHeaderCell: {
+        padding: '12px 10px',
+        textAlign: 'center',
+        borderBottom: '2px solid #ddd',
+        whiteSpace: 'nowrap'
+    },
+    tableDataCell: {
+        padding: '10px 10px',
+        textAlign: 'center',
+        verticalAlign: 'top',
+        whiteSpace: 'nowrap',
+        borderBottom: '1px solid #eee'
+    },
+    descriptionCell: {
+        cursor: 'pointer',
+        maxWidth: '150px',
+        position: 'relative',
+        whiteSpace: 'normal',
+    },
+    descriptionText: {
+        display: 'block',
+        maxWidth: '100%',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        backgroundColor: 'transparent',
+        border: 'none',
+        borderRadius: 'none',
+        padding: 0,
+        lineHeight: '1.4em',
+        position: 'relative',
+        zIndex: 1,
+        left: 'auto',
+        transform: 'none',
+        minWidth: 'auto',
+        textAlign: 'right'
+    },
+};
+// --- END Styles Definition ---
 
-// --- Initial Invoice Structure and Types ---
-/**
- * @typedef {object} Invoice
- * @property {string} id - Firestore Document ID
- * @property {string} date
- * @property {string} title
- * @property {number} amount
- * @property {string | undefined} store_name
- * @property {string | undefined} description
- * @property {string} type
- * @property {string} category
- * @property {boolean} has_receipt
- * @property {boolean} has_invoice
- * @property {import('firebase/firestore').Timestamp | null} created_at
- */
-
-const initialFormState = {
-  date: new Date().toISOString().split('T')[0], // Default to today's date
-  title: '', description: '', amount: '', 
-  store_name: '', type: 'expense', category: 'General', 
-  has_receipt: false, has_invoice: false,
+// Utility function to format amount with Iranian locale
+const formatAmount = (amount) => {
+    // Note: Assuming amount is passed as a string from the server component
+    return amount ? Number(amount).toLocaleString('fa-IR') : '0';
 };
 
-// --- Component ---
-export default function InvoicesClient() {
-  // --- 1. State Management ---
-  const [db, setDb] = useState(null);
-  const [auth, setAuth] = useState(null);
-  const [userId, setUserId] = useState(null);
-  const [invoicesList, setInvoicesList] = useState([]);
-  const [formData, setFormData] = useState(initialFormState);
-  const [isFormVisible, setIsFormVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
+// Utility function to get status icon
+const getStatusIcon = (status) => {
+    return status ? ICON_CHECK : ICON_X;
+};
 
-  // 2. Filter States
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedType, setSelectedType] = useState('all');
-  const [receiptStatus, setReceiptStatus] = useState('all');
-  const [invoiceStatus, setInvoiceStatus] = useState('all');
-  
-  // --- 2. Firebase Initialization and Authentication ---
-  useEffect(() => {
-    try {
-        const app = initializeApp(firebaseConfig);
-        const authInstance = getAuth(app);
-        const dbInstance = getFirestore(app);
+export default function InvoicesClient({ initialInvoices }) {
+    const router = useRouter();
 
-        setAuth(authInstance);
-        setDb(dbInstance);
+    // --- State Management ---
+    const [invoicesList] = useState(initialInvoices || []);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [selectedType, setSelectedType] = useState('all');
+    const [receiptStatus, setReceiptStatus] = useState('all');
+    const [invoiceStatus, setInvoiceStatus] = useState('all');
+    const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
-        const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
-            if (user) {
-                // User signed in or already authenticated
-                setUserId(user.uid);
-            } else if (initialAuthToken) {
-                // Use custom token if available
-                await signInWithCustomToken(authInstance, initialAuthToken);
-            } else {
-                // Sign in anonymously as a fallback
-                const anonUser = await signInAnonymously(authInstance);
-                setUserId(anonUser.user.uid);
-            }
+    // --- Actions ---
+
+    const toggleDescription = useCallback((id) => {
+        // Toggle the description expansion
+        setExpandedDescriptionId(prevId => prevId === id ? null : id);
+    }, []);
+    
+    const refreshDataAndState = useCallback(async () => {
+        setIsRefreshing(true);
+        try {
+            // Call Server Action to clear the cache of the parent Server Component
+            await revalidateInvoices(); 
+            
+            // Manually trigger a full window reload to force the Server Component to re-run
+            window.location.reload(); 
+        } catch (e) {
+            console.error("Failed to trigger refresh:", e);
+            setIsRefreshing(false);
+        }
+    }, []); 
+
+    // --- Filtering and Sorting Logic ---
+    const { uniqueCategories, uniqueTypes, filteredInvoices } = useMemo(() => {
+        const categories = new Set(['همه دسته ها']);
+        const types = new Set(['همه انواع']);
+
+        invoicesList.forEach(invoice => {
+            categories.add(invoice.category);
+            types.add(invoice.type);
         });
 
-        return () => unsubscribe();
-    } catch (e) {
-        console.error("Firebase initialization error:", e);
-        setError("Firebase setup failed. Check console for details.");
-        setLoading(false);
-    }
-  }, []);
+        let result = invoicesList.filter(invoice => {
+            const lowerCaseSearchTerm = searchTerm.toLowerCase();
 
-  // --- 3. Firestore Real-Time Listener (onSnapshot) ---
-  useEffect(() => {
-    if (!db || !userId) {
-      // Wait for DB and User ID to be ready
-      return; 
-    }
+            // 1. Search Filter (Title, Store Name, Date, Description)
+            const matchesSearch = lowerCaseSearchTerm === '' ||
+                invoice.title.toLowerCase().includes(lowerCaseSearchTerm) ||
+                invoice.store_name.toLowerCase().includes(lowerCaseSearchTerm) ||
+                invoice.date.includes(lowerCaseSearchTerm) ||
+                (invoice.description || '').toLowerCase().includes(lowerCaseSearchTerm);
 
-    const path = `/artifacts/${appId}/users/${userId}/invoices`;
-    const invoicesCollection = collection(db, path);
-    const q = query(invoicesCollection);
-    
-    // Set up real-time listener
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedInvoices = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setInvoicesList(fetchedInvoices);
-      setLoading(false);
-    }, (err) => {
-      console.error("Firestore error:", err);
-      setError("Failed to fetch invoices in real-time.");
-      setLoading(false);
-    });
+            // 2. Category Filter
+            const matchesCategory = selectedCategory === 'all' || invoice.category === selectedCategory;
 
-    // Cleanup listener on unmount
-    return () => unsubscribe();
-  }, [db, userId]); 
-  
-  // --- 4. FORM HANDLERS - Saving to Firestore ---
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
+            // 3. Type Filter
+            const matchesType = selectedType === 'all' || invoice.type === selectedType;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!db || !userId) {
-        setError("Database not ready. Please wait.");
-        return;
-    }
+            // 4. Receipt Status Filter
+            const matchesReceipt = receiptStatus === 'all' || 
+                                   (receiptStatus === 'has' && invoice.has_receipt) ||
+                                   (receiptStatus === 'missing' && !invoice.has_receipt);
 
-    setLoading(true);
-    setError(null);
+            // 5. Invoice Status Filter
+            const matchesInvoice = invoiceStatus === 'all' || 
+                                   (invoiceStatus === 'has' && invoice.has_invoice) ||
+                                   (invoiceStatus === 'missing' && !invoice.has_invoice);
 
-    const invoiceData = {
-        ...formData,
-        amount: Number(formData.amount), // Ensure amount is stored as a number
-        created_at: serverTimestamp(), // Add server timestamp
-    };
+            return matchesSearch && matchesCategory && matchesType && matchesReceipt && matchesInvoice;
+        });
 
-    try {
-        const path = `/artifacts/${appId}/users/${userId}/invoices`;
-        const invoicesCollection = collection(db, path);
-        
-        await addDoc(invoicesCollection, invoiceData);
+        // Client-Side Sorting (By Jalaali Date Descending)
+        result.sort((a, b) => {
+            if (a.date > b.date) return -1;
+            if (a.date < b.date) return 1;
+            return 0;
+        });
 
-        // Success: onSnapshot will handle state update automatically
-        setFormData(initialFormState);
-        setIsFormVisible(false); 
-        // No need to manually refresh or update the list state!
-    } catch (err) {
-        console.error("Error saving invoice to Firestore:", err);
-        setError("Failed to save invoice. Check console for details.");
-    } finally {
-        setLoading(false);
-    }
-  };
+        return {
+            uniqueCategories: Array.from(categories),
+            uniqueTypes: Array.from(types),
+            filteredInvoices: result
+        };
+    }, [invoicesList, searchTerm, selectedCategory, selectedType, receiptStatus, invoiceStatus]);
 
 
-  // 5. Filtering Logic
-  const { uniqueCategories, uniqueTypes, filteredInvoices } = useMemo(() => {
-    const categories = new Set(['همه دسته ها']);
-    const types = new Set(['همه انواع']); 
-    
-    invoicesList.forEach(invoice => {
-        categories.add(invoice.category);
-        types.add(invoice.type);
-    });
+    return (
+        <div style={styles.container}>
+            {/* --- HEADER AND ADD BUTTON --- */}
+            <div style={styles.headerContainer}>
+                <h2 style={styles.heading}>لیست فاکتورها</h2>
+                <a 
+                    href="/add-invoice" 
+                    style={styles.addButton}
+                    title="افزودن فاکتور جدید"
+                >
+                    +
+                </a>
+            </div>
 
-    let result = invoicesList;
-    const lowerCaseSearchTerm = searchTerm.toLowerCase();
-    
-    // Apply filters
-    if (searchTerm) {
-         result = result.filter(invoice => 
-            (invoice.date && invoice.date.includes(lowerCaseSearchTerm)) ||
-            invoice.title.toLowerCase().includes(lowerCaseSearchTerm) ||
-            (invoice.store_name?.toLowerCase().includes(lowerCaseSearchTerm))
-        );
-    }
-    if (selectedCategory !== 'all' && selectedCategory !== 'همه دسته ها') {
-        result = result.filter(invoice => invoice.category === selectedCategory);
-    }
-    if (selectedType !== 'all' && selectedType !== 'همه انواع') {
-        result = result.filter(invoice => invoice.type === selectedType);
-    }
-    if (receiptStatus === 'yes') {
-        result = result.filter(invoice => invoice.has_receipt === true);
-    } else if (receiptStatus === 'no') {
-        result = result.filter(invoice => invoice.has_receipt === false);
-    }
-    if (invoiceStatus === 'yes') {
-        result = result.filter(invoice => invoice.has_invoice === true);
-    } else if (invoiceStatus === 'no') {
-        result = result.filter(invoice => invoice.has_invoice === false);
-    }
-    
-    // Client-Side Sorting (Newest first using created_at timestamp)
-    result.sort((a, b) => {
-        // Fallback to current date if timestamp is missing (shouldn't happen with serverTimestamp)
-        const timeA = a.created_at?.toDate().getTime() || 0; 
-        const timeB = b.created_at?.toDate().getTime() || 0; 
-        return timeB - timeA; // Descending order (Newest first)
-    });
+            {/* --- FILTER ROW 1: SEARCH, CATEGORY, TYPE, REFRESH --- */}
+            <div style={styles.filterRow}>
+                {/* Search Input */}
+                <input
+                    type="text"
+                    placeholder="جستجو بر اساس تاریخ، عنوان یا نام فروشگاه..."
+                    style={styles.filterInput}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
 
-    return {
-        uniqueCategories: Array.from(categories),
-        uniqueTypes: Array.from(types),
-        filteredInvoices: result
-    };
-  }, [invoicesList, searchTerm, selectedCategory, selectedType, receiptStatus, invoiceStatus]); 
+                {/* Category Select */}
+                <select 
+                    style={styles.filterSelect}
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                >
+                    {uniqueCategories.map(cat => (
+                        <option key={cat} value={cat === 'همه دسته ها' ? 'all' : cat}>
+                            {cat}
+                        </option>
+                    ))}
+                </select>
 
-
-  // --- Rendering Helpers ---
-  const toggleDescription = (id) => {
-    setExpandedDescriptionId(expandedDescriptionId === id ? null : id);
-  };
-
-  const getAmountClass = (type) => 
-    type === 'income' ? 'text-green-600 font-bold' : 'text-red-600 font-bold';
-
-  const getStatusIcon = (status) => status ? <Check className="w-5 h-5 text-green-500 mx-auto" /> : <XIcon className="w-5 h-5 text-red-500 mx-auto" />;
-  
-  const formatAmount = (amount) => 
-    amount ? Number(amount).toLocaleString('fa-IR') : '0';
-
-
-  return (
-    <div className="mx-auto p-6 max-w-5xl font-['Tahoma', 'sans-serif'] bg-gray-50 shadow-2xl rounded-xl mt-10 text-right">
-      
-      {/* HEADER CONTAINER and PLUS BUTTON */}
-      <div className="flex justify-between items-center mb-6 border-b-2 pb-3 border-gray-200">
-        <h2 className="text-3xl font-extrabold text-green-700 ml-auto pr-4">
-          لیست فاکتورها 
-          <span className="text-sm font-normal text-gray-500 block">شناسه کاربری: {userId || '...'}</span>
-        </h2>
-        <button 
-          onClick={() => {
-            setFormData(initialFormState); // Reset form on open
-            setIsFormVisible(true);
-          }}
-          disabled={!userId}
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-green-600 text-white shadow-lg hover:bg-green-700 transition duration-200 disabled:opacity-50 disabled:cursor-wait"
-          title="افزودن فاکتور جدید"
-        >
-            <Plus className="w-6 h-6" />
-        </button>
-      </div>
-      
-      {/* --- Filter & Action Row --- */}
-      <div className="mb-6 space-y-4 md:space-y-0 md:flex md:gap-4 flex-wrap">
-        
-        {/* Search Input */}
-        <div className="flex items-center relative flex-grow min-w-[200px]">
-            <input 
-                type="text" 
-                placeholder="جستجو بر اساس تاریخ، عنوان یا فروشگاه..." 
-                className="w-full p-2 border border-gray-300 rounded-lg pr-10 text-right focus:ring-blue-500 focus:border-blue-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <Search className="w-5 h-5 text-gray-400 absolute right-3" />
-        </div>
-        
-        {/* Category and Type Selects */}
-        <select 
-            className="p-2 border border-gray-300 rounded-lg min-w-[150px] text-right focus:ring-blue-500 focus:border-blue-500"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-        >
-            <option value="all">همه دسته ها</option>
-            {uniqueCategories.filter(c => c !== 'همه دسته ها').map(category => (
-                <option key={category} value={category}>{category}</option>
-            ))}
-        </select>
-        
-        <select 
-            className="p-2 border border-gray-300 rounded-lg min-w-[150px] text-right focus:ring-blue-500 focus:border-blue-500"
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-        >
-            <option value="all">همه انواع</option>
-            {uniqueTypes.filter(t => t !== 'همه انواع').map(type => (
-                <option key={type} value={type}>{type}</option>
-            ))}
-        </select>
-
-        {/* Refresh is now handled by onSnapshot, but we keep the button for explicit loading visibility */}
-        <div className="flex items-center bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
-          <List className="w-5 h-5 ml-2" />
-          {loading ? 'درحال اتصال...' : `تعداد فاکتورها: ${invoicesList.length}`}
-        </div>
-      </div>
-
-      {/* Row 2: Status Toggle Buttons (Grouped) */}
-      <div className="flex flex-wrap gap-4 mb-6 justify-start">
-          
-          {/* Receipt Filters */}
-          <div className="flex rounded-lg overflow-hidden border border-gray-300 shadow-sm">
-              <span className="p-2 bg-gray-100 text-gray-600 font-medium text-sm">رسید:</span>
-              <button 
-                  className={`px-3 py-2 text-sm transition-colors ${receiptStatus === 'all' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-100 text-gray-700'}`}
-                  onClick={() => setReceiptStatus('all')}
-              >
-                  همه
-              </button>
-              <button 
-                  className={`px-3 py-2 text-sm transition-colors flex items-center gap-1 ${receiptStatus === 'yes' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-100 text-gray-700'}`}
-                  onClick={() => setReceiptStatus('yes')}
-              >
-                  <Check className="w-4 h-4" /> دارای
-              </button>
-              <button 
-                  className={`px-3 py-2 text-sm transition-colors flex items-center gap-1 ${receiptStatus === 'no' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-100 text-gray-700'}`}
-                  onClick={() => setReceiptStatus('no')}
-              >
-                  <XIcon className="w-4 h-4" /> فاقد
-              </button>
-          </div>
-
-          {/* Invoice Filters */}
-          <div className="flex rounded-lg overflow-hidden border border-gray-300 shadow-sm">
-              <span className="p-2 bg-gray-100 text-gray-600 font-medium text-sm">فاکتور:</span>
-              <button 
-                  className={`px-3 py-2 text-sm transition-colors ${invoiceStatus === 'all' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-100 text-gray-700'}`}
-                  onClick={() => setInvoiceStatus('all')}
-              >
-                  همه
-              </button>
-              <button 
-                  className={`px-3 py-2 text-sm transition-colors flex items-center gap-1 ${invoiceStatus === 'yes' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-100 text-gray-700'}`}
-                  onClick={() => setInvoiceStatus('yes')}
-              >
-                  <Check className="w-4 h-4" /> دارای
-              </button>
-              <button 
-                  className={`px-3 py-2 text-sm transition-colors flex items-center gap-1 ${invoiceStatus === 'no' ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-100 text-gray-700'}`}
-                  onClick={() => setInvoiceStatus('no')}
-              >
-                  <XIcon className="w-4 h-4" /> فاقد
-              </button>
-          </div>
-      </div>
-      
-
-      {/* --- Invoice List Table --- */}
-      {loading && <p className="text-center text-blue-600 p-4">درحال بارگذاری لیست...</p>}
-      {error && <p className="text-center text-red-500 bg-red-100 p-3 rounded-lg">{error}</p>}
-      
-      {!loading && filteredInvoices.length === 0 ? (
-          <p className="text-center text-gray-500 p-8 text-lg bg-white rounded-lg shadow-inner">
-            {invoicesList.length > 0 ? 'هیچ فاکتوری با فیلترهای اعمال شده یافت نشد.' : 'هیچ فاکتوری برای نمایش وجود ندارد. لطفا یک فاکتور اضافه کنید.'}
-          </p>
-      ) : (
-          <div className="overflow-x-auto bg-white rounded-lg shadow-lg border border-gray-100">
-              <table className="min-w-full border-collapse text-sm text-center rtl">
-                  <thead className="bg-green-600 text-white sticky top-0">
-                      <tr>
-                          <th className="p-3 whitespace-nowrap border-b border-gray-200">تاریخ</th> 
-                          <th className="p-3 whitespace-nowrap border-b border-gray-200">نام فروشگاه</th>
-                          <th className="p-3 whitespace-nowrap border-b border-gray-200">عنوان</th>
-                          <th className="p-3 whitespace-nowrap border-b border-gray-200">مبلغ (تومان)</th>
-                          <th className="p-3 whitespace-nowrap border-b border-gray-200">نوع</th>
-                          <th className="p-3 whitespace-nowrap border-b border-gray-200">دسته</th>
-                          <th className="p-3 whitespace-nowrap border-b border-gray-200">توضیحات</th> 
-                          <th className="p-3 border-b border-gray-200">رسید</th>
-                          <th className="p-3 border-b border-gray-200">فاکتور</th>
-                      </tr>
-                  </thead>
-                  <tbody>
-                      {filteredInvoices.map((invoice) => {
-                          const isExpanded = expandedDescriptionId === invoice.id;
-                          const description = invoice.description || '---';
-                          const needsTruncation = description.length > 30 && !isExpanded;
-
-                          return (
-                              <tr key={invoice.id} className="border-b border-gray-100 hover:bg-gray-50 transition duration-100">
-                                  <td className="p-3 whitespace-nowrap">{invoice.date}</td> 
-                                  <td className="p-3 whitespace-nowrap">{invoice.store_name || 'N/A'}</td>
-                                  <td className="p-3 whitespace-nowrap">{invoice.title}</td>
-                                  <td className={`p-3 whitespace-nowrap ${getAmountClass(invoice.type)}`}>
-                                    {formatAmount(invoice.amount)}
-                                  </td>
-                                  <td className="p-3 whitespace-nowrap">{invoice.type === 'income' ? 'درآمد' : 'هزینه'}</td>
-                                  <td className="p-3 whitespace-nowrap">{invoice.category}</td>
-                                  
-                                  <td 
-                                      className="p-3 align-top max-w-[150px] relative text-sm cursor-pointer"
-                                      onClick={() => toggleDescription(invoice.id)} 
-                                  >
-                                      <div 
-                                          className={`relative inline-block p-1 rounded transition-all duration-300 ${isExpanded ? 'bg-yellow-50 shadow-md z-10 whitespace-normal max-w-xs text-right' : 'truncate whitespace-nowrap max-w-full'}`}
-                                          style={isExpanded ? { position: 'absolute', right: '50%', transform: 'translateX(50%)', minWidth: '250px' } : {}}
-                                      >
-                                          {description}
-                                      </div>
-                                      {needsTruncation && (
-                                          <span className="text-gray-400 text-xs mr-1 whitespace-nowrap">
-                                              ... (بیشتر)
-                                          </span>
-                                      )}
-                                  </td>
-                                  
-                                  <td className="p-3">{getStatusIcon(invoice.has_receipt)}</td>
-                                  <td className="p-3">{getStatusIcon(invoice.has_invoice)}</td>
-                              </tr>
-                          );
-                      })}
-                  </tbody>
-              </table>
-          </div>
-      )}
-
-      {/* --- Form Modal/Overlay --- */}
-      {isFormVisible && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex justify-center items-center p-4">
-          <form 
-            onSubmit={handleSubmit} 
-            className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg relative"
-          >
-            <h2 className="text-xl font-bold mb-4 border-b pb-2 text-gray-700">فاکتور جدید</h2>
-            
-            <button
-              type="button"
-              onClick={() => setIsFormVisible(false)}
-              className="absolute top-4 left-4 text-gray-500 hover:text-gray-800 p-1"
-            >
-              <X className="w-6 h-6" />
-            </button>
-
-            {error && <p className="text-red-500 mb-4 bg-red-100 p-2 rounded-lg">{error}</p>}
-            
-            <div className="space-y-4">
-                {/* Date Input */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">تاریخ (میلادی - YYYY-MM-DD)</label>
-                    <input 
-                      type="date" 
-                      name="date" 
-                      value={formData.date} 
-                      onChange={handleChange} 
-                      required 
-                      className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 text-left"
-                    />
-                </div>
-
-                {/* Title and Amount */}
-                <div className="flex space-x-4 rtl:space-x-reverse">
-                    <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">عنوان</label>
-                        <input type="text" name="title" value={formData.title} onChange={handleChange} required className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" />
-                    </div>
-                    <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">مبلغ (ریال/تومان)</label>
-                        <input type="number" name="amount" value={formData.amount} onChange={handleChange} required className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 text-left" />
-                    </div>
-                </div>
-
-                {/* Type (Income/Expense) */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">نوع</label>
-                    <select name="type" value={formData.type} onChange={handleChange} className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 text-right">
-                      <option value="expense">هزینه</option>
-                      <option value="income">درآمد</option>
-                    </select>
-                </div>
+                {/* Type Select */}
+                <select 
+                    style={styles.filterSelect}
+                    value={selectedType}
+                    onChange={(e) => setSelectedType(e.target.value)}
+                >
+                    {uniqueTypes.map(type => (
+                        <option key={type} value={type === 'همه انواع' ? 'all' : type}>
+                            {type}
+                        </option>
+                    ))}
+                </select>
                 
-                {/* Category and Store Name */}
-                <div className="flex space-x-4 rtl:space-x-reverse">
-                    <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">نام فروشگاه</label>
-                        <input type="text" name="store_name" value={formData.store_name} onChange={handleChange} className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" />
-                    </div>
-                    <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">دسته بندی</label>
-                         <input type="text" name="category" value={formData.category} onChange={handleChange} className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500" />
-                    </div>
+                {/* Manual Refresh Button */}
+                 <button 
+                    onClick={refreshDataAndState} 
+                    disabled={isRefreshing}
+                    style={{
+                        ...styles.statusButtonBase,
+                        backgroundColor: isRefreshing ? '#ccc' : '#f0f0f0',
+                        color: isRefreshing ? '#999' : '#333',
+                        minWidth: '140px',
+                        border: '1px solid #ccc',
+                        borderRadius: '5px'
+                    }}
+                >
+                    {isRefreshing ? 'درحال به‌روزرسانی...' : `تعداد فاکتورها: ${invoicesList.length}`}
+                </button>
+            </div>
+
+            {/* --- FILTER ROW 2: STATUS BUTTONS --- */}
+            <div style={styles.statusRow}>
+                {/* Receipt Status Buttons */}
+                <div style={styles.buttonGroup}>
+                    <button 
+                        style={{ ...styles.statusButtonBase, ...(receiptStatus === 'all' ? styles.statusButtonActive : {}) }}
+                        onClick={() => setReceiptStatus('all')}>همه</button>
+                    <button 
+                        style={{ ...styles.statusButtonBase, ...(receiptStatus === 'has' ? styles.statusButtonActive : {}) }}
+                        onClick={() => setReceiptStatus('has')}><span style={{ fontSize: '1.2em' }}>{ICON_CHECK}</span> دارای رسید</button>
+                    <button 
+                        style={{ ...styles.statusButtonBase, ...(receiptStatus === 'missing' ? styles.statusButtonActive : {}) }}
+                        onClick={() => setReceiptStatus('missing')}><span style={{ fontSize: '1.2em' }}>{ICON_X}</span> فاقد رسید</button>
                 </div>
 
-                
-                {/* Checkboxes */}
-                <div className="flex space-x-6 pt-2 justify-start">
-                    <label className="flex items-center text-sm font-medium text-gray-700">
-                        <input 
-                          type="checkbox" 
-                          name="has_receipt" 
-                          checked={formData.has_receipt} 
-                          onChange={handleChange} 
-                          className="rounded text-blue-600 focus:ring-blue-500 ml-2 h-4 w-4"
-                        />
-                        رسید دارد؟
-                    </label>
-                    <label className="flex items-center text-sm font-medium text-gray-700">
-                        <input 
-                          type="checkbox" 
-                          name="has_invoice" 
-                          checked={formData.has_invoice} 
-                          onChange={handleChange} 
-                          className="rounded text-blue-600 focus:ring-blue-500 ml-2 h-4 w-4"
-                        />
-                        فاکتور دارد؟
-                    </label>
-                </div>
-
-                 {/* Description Textarea */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">توضیحات تکمیلی</label>
-                    <textarea name="description" value={formData.description} onChange={handleChange} rows="2" className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 resize-none"></textarea>
+                {/* Invoice Status Buttons */}
+                <div style={styles.buttonGroup}>
+                    <button 
+                        style={{ ...styles.statusButtonBase, ...(invoiceStatus === 'all' ? styles.statusButtonActive : {}) }}
+                        onClick={() => setInvoiceStatus('all')}>همه</button>
+                    <button 
+                        style={{ ...styles.statusButtonBase, ...(invoiceStatus === 'has' ? styles.statusButtonActive : {}) }}
+                        onClick={() => setInvoiceStatus('has')}><span style={{ fontSize: '1.2em' }}>{ICON_CHECK}</span> دارای فاکتور</button>
+                    <button 
+                        style={{ ...styles.statusButtonBase, ...(invoiceStatus === 'missing' ? styles.statusButtonActive : {}) }}
+                        onClick={() => setInvoiceStatus('missing')}><span style={{ fontSize: '1.2em' }}>{ICON_X}</span> فاقد فاکتور</button>
                 </div>
             </div>
 
-            {/* Submit Button */}
-            <div className="mt-6">
-              <button
-                type="submit"
-                disabled={loading || !userId}
-                className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200 disabled:opacity-50"
-              >
-                <Save className="w-5 h-5 ml-2" />
-                {loading ? 'درحال ذخیره‌سازی...' : 'ذخیره فاکتور'}
-              </button>
+            {/* --- INVOICE LIST TABLE --- */}
+            <div style={styles.tableContainer}>
+                <table style={styles.table}>
+                    <thead style={styles.tableHead}>
+                        <tr>
+                            <th style={styles.tableHeaderCell}>تاریخ</th>
+                            <th style={styles.tableHeaderCell}>نام فروشگاه</th>
+                            <th style={styles.tableHeaderCell}>عنوان</th>
+                            <th style={styles.tableHeaderCell}>مبلغ (ریال)</th>
+                            <th style={styles.tableHeaderCell}>نوع</th>
+                            <th style={styles.tableHeaderCell}>دسته</th>
+                            <th style={styles.tableHeaderCell}>توضیحات</th>
+                            <th style={styles.tableHeaderCell}>رسید</th>
+                            <th style={styles.tableHeaderCell}>فاکتور</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredInvoices.length > 0 ? (
+                            filteredInvoices.map(invoice => (
+                                <tr key={invoice.id} style={{ borderBottom: '1px solid #eee' }}>
+                                    <td style={styles.tableDataCell}>{invoice.date}</td>
+                                    <td style={styles.tableDataCell}>{invoice.store_name}</td>
+                                    <td style={styles.tableDataCell}>{invoice.title}</td>
+                                    <td style={styles.tableDataCell}>{formatAmount(invoice.amount)}</td>
+                                    <td style={styles.tableDataCell}>{invoice.type}</td>
+                                    <td style={styles.tableDataCell}>{invoice.category}</td>
+                                    <td 
+                                        style={{ ...styles.tableDataCell, ...styles.descriptionCell }}
+                                        onClick={() => toggleDescription(invoice.id)}
+                                        title={invoice.description}
+                                    >
+                                        <div 
+                                            style={{
+                                                ...styles.descriptionText,
+                                                whiteSpace: expandedDescriptionId === invoice.id ? 'normal' : 'nowrap',
+                                                overflow: expandedDescriptionId === invoice.id ? 'visible' : 'hidden',
+                                                textOverflow: expandedDescriptionId === invoice.id ? 'clip' : 'ellipsis',
+                                                minWidth: expandedDescriptionId === invoice.id ? '250px' : 'auto',
+                                                backgroundColor: expandedDescriptionId === invoice.id ? '#f9f9f9' : 'transparent',
+                                                padding: expandedDescriptionId === invoice.id ? '5px' : '0',
+                                                border: expandedDescriptionId === invoice.id ? '1px solid #ddd' : 'none',
+                                                position: expandedDescriptionId === invoice.id ? 'absolute' : 'relative',
+                                                zIndex: expandedDescriptionId === invoice.id ? 10 : 1,
+                                                // 🟢 FIX: Corrected the unterminated string here
+                                                left: expandedDescriptionId === invoice.id ? '0' : 'auto', 
+                                                boxShadow: expandedDescriptionId === invoice.id ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
+                                            }}
+                                        >
+                                            {invoice.description || '...'}
+                                        </div>
+                                    </td>
+                                    <td style={styles.tableDataCell}>{getStatusIcon(invoice.has_receipt)}</td>
+                                    <td style={styles.tableDataCell}>{getStatusIcon(invoice.has_invoice)}</td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan="9" style={{...styles.tableDataCell, textAlign: 'center', padding: '20px'}}>
+                                    فاکتوری یافت نشد.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
-          </form>
         </div>
-      )}
-    </div>
-  );
+    );
 }
