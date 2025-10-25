@@ -1,6 +1,14 @@
 'use client'; 
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp } from 'firebase/firestore';
+
+// --- Global Firebase Configuration (Mandatory) ---
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
 // --- ICON DEFINITIONS: Using inline SVGs to avoid 'Module not found' dependency errors ---
 const Plus = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5v14"/></svg>;
@@ -9,84 +17,114 @@ const Save = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width
 const X = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>;
 const Search = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>;
 const Check = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
-// We use XIcon to distinguish the Check component from the status X component
 const XIcon = X; 
 // --- END ICON DEFINITIONS ---
 
 // --- Initial Invoice Structure and Types ---
 /**
  * @typedef {object} Invoice
- * @property {number} id
- * @property {string | null} date
- *
- * (Rest of the file remains the same)
- *
+ * @property {string} id - Firestore Document ID
+ * @property {string} date
+ * @property {string} title
+ * @property {number} amount
+ * @property {string | undefined} store_name
+ * @property {string | undefined} description
+ * @property {string} type
+ * @property {string} category
+ * @property {boolean} has_receipt
+ * @property {boolean} has_invoice
+ * @property {import('firebase/firestore').Timestamp | null} created_at
  */
 
 const initialFormState = {
-  date: '', title: '', description: '', amount: '', 
+  date: new Date().toISOString().split('T')[0], // Default to today's date
+  title: '', description: '', amount: '', 
   store_name: '', type: 'expense', category: 'General', 
   has_receipt: false, has_invoice: false,
 };
 
 // --- Component ---
-/**
- * @param {{ initialInvoices: Invoice[] }} props 
- */
-export default function InvoicesClient({ initialInvoices }) {
+export default function InvoicesClient() {
   // --- 1. State Management ---
-  // The actual list is now managed by state, initialized from props
-  const [invoicesList, setInvoicesList] = useState(initialInvoices || []);
+  const [db, setDb] = useState(null);
+  const [auth, setAuth] = useState(null);
+  const [userId, setUserId] = useState(null);
+  const [invoicesList, setInvoicesList] = useState([]);
   const [formData, setFormData] = useState(initialFormState);
   const [isFormVisible, setIsFormVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
 
-  // 2. Filter States (retained from your file)
+  // 2. Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [receiptStatus, setReceiptStatus] = useState('all');
   const [invoiceStatus, setInvoiceStatus] = useState('all');
   
-  // --- 3. DATA FETCHING FUNCTION (CRITICAL for Refresh) ---
-  const fetchInvoices = useCallback(async () => {
-    console.log("DEBUG: fetchInvoices started..."); // 💡 Debug Log 1
-    setLoading(true);
-    setError(null);
+  // --- 2. Firebase Initialization and Authentication ---
+  useEffect(() => {
     try {
-      // API path needs to be absolute or relative to the root
-      const response = await fetch('/api/invoices'); 
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const data = await response.json();
-      
-      // IMPORTANT: Update the component's state with the fresh data
-      if (data && data.invoices) {
-        setInvoicesList(data.invoices);
-        // 💡 Debug Log 2: Check the list size returned from the server
-        console.log(`DEBUG: Successfully fetched ${data.invoices.length} invoices from the API.`); 
-      }
-    } catch (err) {
-      console.error("Error fetching data:", err);
-      setError("Failed to load invoices from server.");
-    } finally {
-      setLoading(false);
-      console.log("DEBUG: fetchInvoices finished."); // 💡 Debug Log 3
+        const app = initializeApp(firebaseConfig);
+        const authInstance = getAuth(app);
+        const dbInstance = getFirestore(app);
+
+        setAuth(authInstance);
+        setDb(dbInstance);
+
+        const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
+            if (user) {
+                // User signed in or already authenticated
+                setUserId(user.uid);
+            } else if (initialAuthToken) {
+                // Use custom token if available
+                await signInWithCustomToken(authInstance, initialAuthToken);
+            } else {
+                // Sign in anonymously as a fallback
+                const anonUser = await signInAnonymously(authInstance);
+                setUserId(anonUser.user.uid);
+            }
+        });
+
+        return () => unsubscribe();
+    } catch (e) {
+        console.error("Firebase initialization error:", e);
+        setError("Firebase setup failed. Check console for details.");
+        setLoading(false);
     }
   }, []);
 
-  // --- Initial Load Effect ---
-  // This runs once to ensure the list is populated or re-fetched if props were empty
+  // --- 3. Firestore Real-Time Listener (onSnapshot) ---
   useEffect(() => {
-    if (!initialInvoices || initialInvoices.length === 0) {
-      fetchInvoices();
+    if (!db || !userId) {
+      // Wait for DB and User ID to be ready
+      return; 
     }
-  }, [fetchInvoices, initialInvoices]);
+
+    const path = `/artifacts/${appId}/users/${userId}/invoices`;
+    const invoicesCollection = collection(db, path);
+    const q = query(invoicesCollection);
+    
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedInvoices = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setInvoicesList(fetchedInvoices);
+      setLoading(false);
+    }, (err) => {
+      console.error("Firestore error:", err);
+      setError("Failed to fetch invoices in real-time.");
+      setLoading(false);
+    });
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
+  }, [db, userId]); 
   
-  // --- 4. FORM HANDLERS ---
+  // --- 4. FORM HANDLERS - Saving to Firestore ---
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -97,38 +135,40 @@ export default function InvoicesClient({ initialInvoices }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!db || !userId) {
+        setError("Database not ready. Please wait.");
+        return;
+    }
+
     setLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch('/api/invoices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+    const invoiceData = {
+        ...formData,
+        amount: Number(formData.amount), // Ensure amount is stored as a number
+        created_at: serverTimestamp(), // Add server timestamp
+    };
 
-      if (response.ok) {
-        console.log("DEBUG: POST successful. Triggering list refresh."); // 💡 Debug Log 4
-        // 💥 FIX: CALL REFRESH HERE TO GET THE NEW DATA
-        await fetchInvoices(); 
+    try {
+        const path = `/artifacts/${appId}/users/${userId}/invoices`;
+        const invoicesCollection = collection(db, path);
         
+        await addDoc(invoicesCollection, invoiceData);
+
+        // Success: onSnapshot will handle state update automatically
         setFormData(initialFormState);
-        setIsFormVisible(false); // Hide the form on success
-        // Could add a temporary success message state here
-      } else {
-        const errorData = await response.json();
-        setError(`Failed to save invoice: ${errorData.message || response.statusText}`);
-      }
+        setIsFormVisible(false); 
+        // No need to manually refresh or update the list state!
     } catch (err) {
-      setError("Network error during save. Check console for details.");
-      console.error(err);
+        console.error("Error saving invoice to Firestore:", err);
+        setError("Failed to save invoice. Check console for details.");
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 
 
-  // 5. Filtering Logic (Adapted to use invoicesList state)
+  // 5. Filtering Logic
   const { uniqueCategories, uniqueTypes, filteredInvoices } = useMemo(() => {
     const categories = new Set(['همه دسته ها']);
     const types = new Set(['همه انواع']); 
@@ -166,13 +206,12 @@ export default function InvoicesClient({ initialInvoices }) {
         result = result.filter(invoice => invoice.has_invoice === false);
     }
     
-    // Client-Side Sorting (Newest first)
+    // Client-Side Sorting (Newest first using created_at timestamp)
     result.sort((a, b) => {
-        const dateA = a.date || '0000/01/01'; 
-        const dateB = b.date || '0000/01/01'; 
-        if (dateA < dateB) return 1; 
-        if (dateA > dateB) return -1;  
-        return 0; 
+        // Fallback to current date if timestamp is missing (shouldn't happen with serverTimestamp)
+        const timeA = a.created_at?.toDate().getTime() || 0; 
+        const timeB = b.created_at?.toDate().getTime() || 0; 
+        return timeB - timeA; // Descending order (Newest first)
     });
 
     return {
@@ -203,11 +242,16 @@ export default function InvoicesClient({ initialInvoices }) {
       {/* HEADER CONTAINER and PLUS BUTTON */}
       <div className="flex justify-between items-center mb-6 border-b-2 pb-3 border-gray-200">
         <h2 className="text-3xl font-extrabold text-green-700 ml-auto pr-4">
-          لیست فاکتورها
+          لیست فاکتورها 
+          <span className="text-sm font-normal text-gray-500 block">شناسه کاربری: {userId || '...'}</span>
         </h2>
         <button 
-          onClick={() => setIsFormVisible(true)} // Open modal instead of navigating
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-green-600 text-white shadow-lg hover:bg-green-700 transition duration-200"
+          onClick={() => {
+            setFormData(initialFormState); // Reset form on open
+            setIsFormVisible(true);
+          }}
+          disabled={!userId}
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-green-600 text-white shadow-lg hover:bg-green-700 transition duration-200 disabled:opacity-50 disabled:cursor-wait"
           title="افزودن فاکتور جدید"
         >
             <Plus className="w-6 h-6" />
@@ -252,15 +296,11 @@ export default function InvoicesClient({ initialInvoices }) {
             ))}
         </select>
 
-        {/* Manual Refresh Button */}
-        <button
-            onClick={fetchInvoices}
-            disabled={loading}
-            className="flex items-center bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50 hover:bg-gray-300"
-          >
+        {/* Refresh is now handled by onSnapshot, but we keep the button for explicit loading visibility */}
+        <div className="flex items-center bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50">
           <List className="w-5 h-5 ml-2" />
-          {loading ? 'بارگذاری...' : 'به‌روزرسانی'}
-        </button>
+          {loading ? 'درحال اتصال...' : `تعداد فاکتورها: ${invoicesList.length}`}
+        </div>
       </div>
 
       {/* Row 2: Status Toggle Buttons (Grouped) */}
@@ -320,7 +360,7 @@ export default function InvoicesClient({ initialInvoices }) {
       
       {!loading && filteredInvoices.length === 0 ? (
           <p className="text-center text-gray-500 p-8 text-lg bg-white rounded-lg shadow-inner">
-            {invoicesList.length > 0 ? 'هیچ فاکتوری با فیلترهای اعمال شده یافت نشد.' : 'هیچ فاکتوری برای نمایش وجود ندارد.'}
+            {invoicesList.length > 0 ? 'هیچ فاکتوری با فیلترهای اعمال شده یافت نشد.' : 'هیچ فاکتوری برای نمایش وجود ندارد. لطفا یک فاکتور اضافه کنید.'}
           </p>
       ) : (
           <div className="overflow-x-auto bg-white rounded-lg shadow-lg border border-gray-100">
@@ -436,7 +476,7 @@ export default function InvoicesClient({ initialInvoices }) {
                     </select>
                 </div>
                 
-                {/* Description and Store Name */}
+                {/* Category and Store Name */}
                 <div className="flex space-x-4 rtl:space-x-reverse">
                     <div className="flex-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">نام فروشگاه</label>
@@ -484,7 +524,7 @@ export default function InvoicesClient({ initialInvoices }) {
             <div className="mt-6">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !userId}
                 className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition duration-200 disabled:opacity-50"
               >
                 <Save className="w-5 h-5 ml-2" />
