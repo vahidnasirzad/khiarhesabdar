@@ -61,6 +61,7 @@ export default function AddInvoice() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
+      // Sending the Gregorian date in standard YYYY-MM-DD format for API route to consume
       const payload = { ...form, date: moment(form.date).format('YYYY-MM-DD') };
       const res = await fetch('/api/invoices', {
         method: 'POST',

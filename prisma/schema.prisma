@@ -6,20 +6,20 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // Make sure your Neon connection string is in your .env file
+  // Ensure your Neon connection string is in your .env file
   url      = env("DATABASE_URL")
 }
 
 model Invoice {
-  id            Int       @id @default(autoincrement())
-  store_name    String?
-  date          DateTime 
+  id            Int      @id @default(autoincrement())
+  store_name    String  // Made mandatory to match frontend 'required' attribute
+  date          DateTime
   title         String
-  amount        Float
+  amount        Decimal // CORRECTED: Use Decimal for financial data (currency)
   type          String
   category      String
-  description   String?
+  description   String? // Kept optional as it was
   has_receipt   Boolean
   has_invoice   Boolean
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime @default(now())
 }
