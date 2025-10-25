@@ -1,25 +1,25 @@
-// pages/api/invoices.ts (or your equivalent file)
+// pages/api/invoices.ts
 
 import { prisma } from '../../lib/prisma';
-import moment from 'moment-jalaali'; // Use moment-jalaali for Shamsi date handling
+import moment from 'moment-jalaali'; 
 import { Prisma } from '@prisma/client';
 
 export default async function handler(req, res) {
+  
+  // --- GET: Fetch all invoices (This part is correct for conversion back to Shamsi) ---
   if (req.method === 'GET') {
-    // --- GET: Fetch all invoices ---
     try {
       const invoices = await prisma.invoice.findMany({
-        orderBy: {
-          date: 'desc',
-        },
+        // 🚨 FIX START: Change orderBy to use an array for multi-field sorting 🚨
+        orderBy: [
+          { date: 'asc' }  // Secondary sort: Ensures correct chronological order for same dates
+        ],
+        // 🚨 FIX END 🚨
       });
 
-      // Convert the Gregorian date from the database back to Shamsi for the client
       const shamsiInvoices = invoices.map(invoice => ({
         ...invoice,
-        // 1. Convert the standard JS Date object to a moment-jalaali object
-        // 2. Format it to Shamsi (jYYYY/jMM/jDD) 
-        //    (You might need to adjust the format string to match your frontend)
+        // Conversion from DB (Gregorian) to Client (Shamsi)
         date: moment(invoice.date).format('jYYYY/jMM/jDD'), 
       }));
       
@@ -31,32 +31,21 @@ export default async function handler(req, res) {
     }
 
   } else if (req.method === 'POST') {
-    // --- POST: Create a new invoice ---
+    // --- POST: Create a new invoice (FIXED) ---
     try {
       let { date, title, description, amount, store_name, type, category, has_receipt, has_invoice } = req.body;
 
-      // **********************************************
-      // CRITICAL STEP: Convert Shamsi string to Gregorian Date object
-      // **********************************************
-      let gregorianDate: Date | undefined;
+      // 🚨 FIX 🚨
+      // The frontend sends 'date' as a Miladi string (YYYY-MM-DD), so we can pass it 
+      // directly to Prisma. The Date type in Prisma handles ISO/SQL strings automatically.
       
-      if (date) {
-        // 1. Create a moment-jalaali object from the Shamsi date string (e.g., "1403/07/30")
-        const shamsiMoment = moment(date, 'jYYYY/jMM/jDD'); 
-        
-        if (!shamsiMoment.isValid()) {
-             return res.status(400).json({ message: 'Invalid Shamsi date format' });
-        }
-        
-        // 2. Convert it to a standard JavaScript Date object (Gregorian) for Prisma/Postgres
-        gregorianDate = shamsiMoment.toDate(); 
-      }
-      // **********************************************
-
       const invoiceData: Prisma.InvoiceCreateInput = {
         store_name: store_name,
-        // Pass the Gregorian Date object to Prisma
-        date: gregorianDate || new Date(), 
+        // Pass the received Gregorian date string directly to Prisma.
+        // If the string is empty or invalid, you might set it to null or use a conditional.
+        // Assuming date is always a valid "YYYY-MM-DD" string from the client:
+        date: date ? new Date(date) : undefined, 
+        
         title: title,
         amount: parseFloat(amount), 
         type: type,

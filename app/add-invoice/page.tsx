@@ -1,10 +1,8 @@
 // app/add-invoice/page.tsx
 
 'use client'; 
-// FIX: Import CSSProperties for style object typing
 import React, { useState, CSSProperties, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation'; 
-// FIX: Import DateObject from the main library path for type safety
 import DatePicker, { DateObject } from 'react-multi-date-picker'; 
 import persian from 'react-date-object/calendars/persian';
 import persian_fa from 'react-date-object/locales/persian_fa';
@@ -16,6 +14,7 @@ type StyleMap = Record<string, CSSProperties>;
 
 export default function AddInvoice() {
   const router = useRouter();
+  // State for form fields
   const [form, setForm] = useState({
     date: new Date(),
     title: '',
@@ -28,17 +27,16 @@ export default function AddInvoice() {
     has_invoice: false,
   });
 
+  // State for button lock and errors
   const [shamsiPreview, setShamsiPreview] = useState(moment(form.date).format('jYYYY/jMM/jDD'));
   const [error, setError] = useState('');
+  // 💥 NEW STATE: Controls the disabled state of the submit button
+  const [isSubmitting, setIsSubmitting] = useState(false); 
 
   // FIX: Use ChangeEvent with a union type and safe type assertion for 'checked'
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    // Assert 'e.target' as HTMLInputElement for TypeScript to recognize 'checked'
-    // This is safe because 'checked' is only used when 'type' is 'checkbox'.
     const target = e.target as HTMLInputElement;
-
     const { name, value, type, checked } = target;
-
     setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
   };
 
@@ -60,23 +58,47 @@ export default function AddInvoice() {
   // FIX: Explicitly type 'e' as a React Form Event
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // 💥 1. Check if submission is currently locked
+    if (isSubmitting) return;
+
+    // 💥 2. Lock the button immediately
+    setIsSubmitting(true);
+    setError('');
+
+    // 💥 3. Start the 5-second cooldown timer
+    const COOLDOWN_MS = 5000;
+    const timeoutId = setTimeout(() => {
+        console.log(`✅ Cooldown finished. Re-enabling submit button after ${COOLDOWN_MS / 1000} seconds.`);
+        setIsSubmitting(false);
+    }, COOLDOWN_MS);
+
     try {
       // Sending the Gregorian date in standard YYYY-MM-DD format for API route to consume
       const payload = { ...form, date: moment(form.date).format('YYYY-MM-DD') };
+      
       const res = await fetch('/api/invoices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (res.ok) router.push('/invoices');
-      else {
+      
+      if (res.ok) {
+        // Clear the cooldown timer if successful, as we are navigating away
+        clearTimeout(timeoutId); 
+        router.push('/invoices');
+      } else {
         const data = await res.json();
         setError(data.message || 'خطا در ثبت فاکتور');
+        // If submission fails, the cooldown will still finish in 5 seconds
       }
     } catch (err) {
       console.error(err);
       setError('خطا در اتصال به سرور');
+      // If fetch fails completely, the cooldown will still finish in 5 seconds
     }
+    
+    // Note: The button is re-enabled by the setTimeout, not a final state update here.
   };
 
   return (
@@ -159,7 +181,15 @@ export default function AddInvoice() {
           </label>
         </div>
 
-        <button type="submit" style={styles.button}>ثبت فاکتور</button>
+        {/* 💥 4. Disable the button when isSubmitting is true */}
+        <button 
+            type="submit" 
+            style={{...styles.button, opacity: isSubmitting ? 0.6 : 1}} 
+            disabled={isSubmitting}
+        >
+            {isSubmitting ? 'در حال ثبت... لطفا صبر کنید ' : 'ثبت فاکتور'}
+        </button>
+        
         {error && <p style={styles.error}>{error}</p>}
       </form>
     </div>
@@ -186,7 +216,8 @@ const styles: StyleMap = {
   input: { padding: '10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' },
   button: { padding: '12px',
     fontFamily: 'Lalezar, Tahoma, sans-serif',
-    borderRadius: '5px', border: 'none', backgroundColor: 'green', color: 'white', fontSize: '16px', cursor: 'pointer' 
+    borderRadius: '5px', border: 'none', backgroundColor: 'green', color: 'white', fontSize: '16px', cursor: 'pointer',
+    transition: 'opacity 0.3s' // Added transition for smoother visual change
   },
   error: { color: 'red', marginTop: '10px' },
 

@@ -1,0 +1,5 @@
+{
+  "/add-invoice/page": "app/add-invoice/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/invoices/page": "app/invoices/page.js"
+}
