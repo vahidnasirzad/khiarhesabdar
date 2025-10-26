@@ -1,0 +1,23 @@
+/* app/global.css - Option 1: Semi-Transparent Overlay */
+
+body {
+
+  font-family: 'Lalezar', Tahoma, Arial, sans-serif; 
+  font-weight: 400;
+
+  /* Adjust '0.5' (50%) to '0.3' (30%) for lighter, or '0.7' (70%) for darker. */
+  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+                    url('/bg.jpg'); 
+  
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center center;
+  
+  /* Set a light text color so it stands out against the darker background */
+  color: #f0f4f8; 
+  
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}

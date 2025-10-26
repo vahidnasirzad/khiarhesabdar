@@ -1,0 +1,25 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Ensure your Neon connection string is in your .env file
+  url      = env("DATABASE_URL")
+}
+
+model Invoice {
+  id            Int      @id @default(autoincrement())
+  store_name    String  // Made mandatory to match frontend 'required' attribute
+  date          DateTime
+  title         String
+  amount        Decimal // CORRECTED: Use Decimal for financial data (currency)
+  type          String
+  category      String
+  description   String? // Kept optional as it was
+  has_receipt   Boolean
+  has_invoice   Boolean
+  createdAt     DateTime @default(now())
+}

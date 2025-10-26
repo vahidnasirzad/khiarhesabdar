@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/app/globals.css"],"sourcesContent":["/* app/global.css - Option 1: Semi-Transparent Overlay */\n\nbody {\n\n  font-family: 'Lalezar', Tahoma, Arial, sans-serif; \n  font-weight: 400;\n\n  /* Adjust '0.5' (50%) to '0.3' (30%) for lighter, or '0.7' (70%) for darker. */\n  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),\n                    url('/bg.jpg'); \n  \n  background-repeat: no-repeat;\n  background-size: cover;\n  background-attachment: fixed;\n  background-position: center center;\n  \n  /* Set a light text color so it stands out against the darker background */\n  color: #f0f4f8; \n  \n  margin: 0;\n  padding: 0;\n  min-height: 100vh;\n}"],"names":[],"mappings":"AAEA"}}]
+}
