@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx'; // 👈 NEW IMPORT for Excel
 import { saveAs } from 'file-saver'; // 👈 NEW IMPORT for file download
 import { revalidateInvoices } from '../../lib/actions'; 
 import { useRouter } from 'next/navigation';
+import DeleteInvoiceButton from './DeleteInvoiceButton'; // 👈 NEW IMPORT
 
 // --- Icon Definitions ---
 const ICON_CHECK = '✅';
@@ -474,6 +475,15 @@ export default function InvoicesClient({ initialInvoices }) {
                         {filteredInvoices.length > 0 ? (
                             filteredInvoices.map(invoice => (
                                 <tr key={invoice.id} style={{ borderBottom: '1px solid #eee' }}>
+                                    <td style={{ ...styles.tableCell, ...styles.actionCell }}>
+                                        {/* ⚠️ Edit Button will go here later 
+                                        <button style={styles.editButton}>✏️ ویرایش</button> 
+                                        */}
+
+                                        {/* --- NEW: DELETE BUTTON --- */}
+                                        <DeleteInvoiceButton invoiceId={invoice.id} onDeleteSuccess={refreshDataAndState}/> 
+                                        
+                                    </td>
                                     <td style={styles.tableDataCell}>{invoice.date}</td>
                                     
                                     <td style={styles.tableDataCell}>{invoice.title}</td>

@@ -14,6 +14,21 @@
       },
       "filename": "lib/actions.js",
       "exportedName": "revalidateInvoices"
+    },
+    "40936b9bd607da1c0a99901b701b1e3c9d21b1cc25": {
+      "workers": {
+        "app/invoices/page": {
+          "moduleId": "[project]/.next-internal/server/app/invoices/page/actions.js { ACTIONS_MODULE0 => \"[project]/lib/actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "deleteInvoice",
+          "filename": "lib/actions.js"
+        }
+      },
+      "layer": {
+        "app/invoices/page": "action-browser"
+      },
+      "filename": "lib/actions.js",
+      "exportedName": "deleteInvoice"
     }
   },
   "edge": {},

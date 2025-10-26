@@ -163,7 +163,7 @@ export default function AddInvoice() {
             <option value="IMP">IMP</option>
             <option value="Milling CNC">Milling CNC</option>
             <option value="PPS">PPS</option>
-            <option value="General">مشترک</option>
+            <option value="General">General</option>
           </select>
         </div>
 

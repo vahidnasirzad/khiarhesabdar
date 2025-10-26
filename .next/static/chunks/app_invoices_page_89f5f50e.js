@@ -3,7 +3,7 @@
     chunks: [
   "static/chunks/node_modules_xlsx_xlsx_mjs_fef98e92._.js",
   "static/chunks/node_modules_df16a110._.js",
-  "static/chunks/_84a28842._.js"
+  "static/chunks/_9041b25c._.js"
 ],
     source: "dynamic"
 });
