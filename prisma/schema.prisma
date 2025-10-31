@@ -10,6 +10,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+  SUPERUSER
+}
+
+model User {
+  id              Int      @id @default(autoincrement())
+  username        String   @unique
+  hashedPassword  String
+  role            Role     @default(USER) // Default role remains USER
+}
+
 model Invoice {
   id            Int      @id @default(autoincrement())
   store_name    String  // Made mandatory to match frontend 'required' attribute

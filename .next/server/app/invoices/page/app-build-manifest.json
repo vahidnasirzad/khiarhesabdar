@@ -1,15 +1,15 @@
 {
   "pages": {
     "/invoices/page": [
-      "static/chunks/node_modules_next_dist_8db7fb1f._.js",
-      "static/chunks/app_favicon_ico_mjs_e98bdb63._.js",
       "static/chunks/[root-of-the-server]__28bc9c2a._.css",
+      "static/chunks/node_modules_next_447cd2c9._.js",
+      "static/chunks/_67051880._.js",
       "static/chunks/app_layout_tsx_0a548d63._.js",
-      "static/chunks/node_modules_next_dist_client_components_builtin_global-error_89f5f50e.js",
+      "static/chunks/node_modules_next_dist_client_components_builtin_global-error_39789b70.js",
       "static/chunks/node_modules_xlsx_xlsx_mjs_fef98e92._.js",
-      "static/chunks/node_modules_df16a110._.js",
-      "static/chunks/_9041b25c._.js",
-      "static/chunks/app_invoices_page_89f5f50e.js",
+      "static/chunks/node_modules_5cf00ef1._.js",
+      "static/chunks/_e4a31365._.js",
+      "static/chunks/app_invoices_page_39789b70.js",
       "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_57d40746._.js",
       "static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js",
       "static/chunks/node_modules_next_dist_compiled_next-devtools_index_a9cb0712.js",

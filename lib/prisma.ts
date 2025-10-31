@@ -2,14 +2,16 @@
 
 import { PrismaClient } from '@prisma/client';
 
-// Use a global variable to keep a single instance of PrismaClient 
-// across hot reloads in development.
 const globalForPrisma = global as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+// 1. Initialize the client using the global pattern
+const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }
+
+// 2. Export the instance as the DEFAULT export
+export default prisma; // 👈 FIX IS HERE

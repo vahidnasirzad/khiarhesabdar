@@ -1,5 +1,20 @@
 {
   "node": {
+    "002102859af4ea5f4d265fc277c10aad0bbaa0ea2b": {
+      "workers": {
+        "app/invoices/page": {
+          "moduleId": "[project]/.next-internal/server/app/invoices/page/actions.js { ACTIONS_MODULE0 => \"[project]/lib/actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "logoutUser",
+          "filename": "lib/actions.js"
+        }
+      },
+      "layer": {
+        "app/invoices/page": "action-browser"
+      },
+      "exportedName": "logoutUser",
+      "filename": "lib/actions.js"
+    },
     "0025615dfe68c561327a3a27ecf04117bebb03270b": {
       "workers": {
         "app/invoices/page": {

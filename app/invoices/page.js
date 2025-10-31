@@ -1,7 +1,7 @@
 // app/invoices/page.js
 import moment from 'moment-jalaali'; 
-import { prisma } from '../../lib/prisma'; // 🚨 VERIFY PATH
-import InvoicesClient from './InvoicesClient'; 
+// ✅ CORRECT (Default Import)
+import prisma from '../../lib/prisma';import InvoicesClient from './InvoicesClient'; 
 import { unstable_noStore as noStore } from 'next/cache'; // Optional: Use if revalidatePath is too slow
 
 async function getInvoices() {

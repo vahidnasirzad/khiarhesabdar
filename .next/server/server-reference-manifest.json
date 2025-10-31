@@ -1,5 +1,71 @@
 {
   "node": {
+    "40bd51e1f1ca160985af6a70a82c6a20034d38e87a": {
+      "workers": {
+        "app/create-user/page": {
+          "moduleId": "[project]/.next-internal/server/app/create-user/page/actions.js { ACTIONS_MODULE0 => \"[project]/lib/actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "createUser",
+          "filename": "lib/actions.js"
+        }
+      },
+      "layer": {
+        "app/create-user/page": "action-browser"
+      },
+      "filename": "lib/actions.js",
+      "exportedName": "createUser"
+    },
+    "002102859af4ea5f4d265fc277c10aad0bbaa0ea2b": {
+      "workers": {
+        "app/add-invoice/page": {
+          "moduleId": "[project]/.next-internal/server/app/add-invoice/page/actions.js { ACTIONS_MODULE0 => \"[project]/lib/actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "logoutUser",
+          "filename": "lib/actions.js"
+        },
+        "app/invoices/page": {
+          "moduleId": "[project]/.next-internal/server/app/invoices/page/actions.js { ACTIONS_MODULE0 => \"[project]/lib/actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "logoutUser",
+          "filename": "lib/actions.js"
+        },
+        "app/login/page": {
+          "moduleId": "[project]/.next-internal/server/app/login/page/actions.js { ACTIONS_MODULE0 => \"[project]/lib/actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "logoutUser",
+          "filename": "lib/actions.js"
+        },
+        "app/page": {
+          "moduleId": "[project]/.next-internal/server/app/page/actions.js { ACTIONS_MODULE0 => \"[project]/lib/actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "logoutUser",
+          "filename": "lib/actions.js"
+        }
+      },
+      "layer": {
+        "app/add-invoice/page": "action-browser",
+        "app/invoices/page": "action-browser",
+        "app/login/page": "action-browser",
+        "app/page": "action-browser"
+      },
+      "filename": "lib/actions.js",
+      "exportedName": "logoutUser"
+    },
+    "60ba27b5e08f8f755d4699cf79724a8430fe3f0dec": {
+      "workers": {
+        "app/login/page": {
+          "moduleId": "[project]/.next-internal/server/app/login/page/actions.js { ACTIONS_MODULE0 => \"[project]/lib/actions.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "loginUser",
+          "filename": "lib/actions.js"
+        }
+      },
+      "layer": {
+        "app/login/page": "action-browser"
+      },
+      "filename": "lib/actions.js",
+      "exportedName": "loginUser"
+    },
     "0025615dfe68c561327a3a27ecf04117bebb03270b": {
       "workers": {
         "app/invoices/page": {
