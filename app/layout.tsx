@@ -33,7 +33,7 @@ export const metadata: Metadata = {
 
 const SESSION_TOKEN_NAME = 'app_session'; 
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -41,7 +41,7 @@ export default function RootLayout({
   
   let username: string | null = null;
   
-  const sessionCookie = cookies().get(SESSION_TOKEN_NAME);
+  const sessionCookie = (await cookies()).get(SESSION_TOKEN_NAME);
 
   if (sessionCookie) {
     try {
