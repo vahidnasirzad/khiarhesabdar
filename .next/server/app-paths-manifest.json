@@ -1,6 +1,6 @@
 {
   "/add-invoice/page": "app/add-invoice/page.js",
-  "/create-user/page": "app/create-user/page.js",
+  "/api/invoices/route": "app/api/invoices/route.js",
   "/invoices/page": "app/invoices/page.js",
   "/login/page": "app/login/page.js",
   "/page": "app/page.js"

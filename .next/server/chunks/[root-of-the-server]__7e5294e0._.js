@@ -61,18 +61,19 @@ module.exports = mod;
 
 // lib/prisma.ts
 __turbopack_context__.s([
-    "prisma",
-    ()=>prisma
+    "default",
+    ()=>__TURBOPACK__default__export__
 ]);
 var __TURBOPACK__imported__module__$5b$externals$5d2f40$prisma$2f$client__$5b$external$5d$__$2840$prisma$2f$client$2c$__cjs$29$__ = __turbopack_context__.i("[externals]/@prisma/client [external] (@prisma/client, cjs)");
 ;
-// Use a global variable to keep a single instance of PrismaClient 
-// across hot reloads in development.
 const globalForPrisma = /*TURBOPACK member replacement*/ __turbopack_context__.g;
+// 1. Initialize the client using the global pattern
 const prisma = globalForPrisma.prisma ?? new __TURBOPACK__imported__module__$5b$externals$5d2f40$prisma$2f$client__$5b$external$5d$__$2840$prisma$2f$client$2c$__cjs$29$__["PrismaClient"]();
 if ("TURBOPACK compile-time truthy", 1) {
     globalForPrisma.prisma = prisma;
 }
+const __TURBOPACK__default__export__ = prisma;
+ // 👈 FIX IS HERE
 }),
 "[project]/app/api/invoices/route.js [app-route] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
@@ -111,7 +112,7 @@ async function POST(request) {
             });
         }
         // 4. Execute the INSERT query using Prisma
-        const newInvoice = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].invoice.create({
+        const newInvoice = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].invoice.create({
             data: {
                 // Convert date string (YYYY-MM-DD) back to a Date object for the database
                 date: date ? new Date(date) : null,

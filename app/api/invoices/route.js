@@ -1,7 +1,7 @@
 // app/api/invoices/route.js
 
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../lib/prisma'; // 🚨 Ensure this path is correct for your project structure
+import  prisma  from '../../../lib/prisma'; // 🚨 Ensure this path is correct for your project structure
 
 /**
  * Handles POST requests to /api/invoices.
